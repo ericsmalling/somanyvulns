@@ -1,18 +1,17 @@
-FROM ruby:2.7.0-slim-buster
+FROM ruby:2.7.0
 
 RUN apt-get update &&\
-    apt-get install -y git vim &&\
+    apt-get install -y git vim sqlite3 &&\
     rm -rf /var/lib/apt/lists/*
 
 RUN gem update --system 3.0.4 &&\
-    gem install bundler -v '2.0.2'
-
+    gem install bundler -v '2.1.2'
 
 WORKDIR /usr/src/app/alpha-blog
 
 COPY . .
 
-ENV BUNDLER_VERSION 2.0.2
+ENV BUNDLER_VERSION 2.1.2
 
 RUN bundle update &&\
     bundle install &&\
@@ -22,3 +21,6 @@ RUN bundle update &&\
 EXPOSE 3000
 
 CMD ["rails", "server", "-b", "0.0.0.0"]   
+
+
+

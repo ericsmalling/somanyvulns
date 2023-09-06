@@ -1,40 +1,23 @@
-FROM ruby:2.7.0-slim-buster AS build-env
-ARG RAILS_ROOT=/usr/src/app/alpha-blog
-ARG BUILD_PACKAGES=""
-ARG DEV_PACKAGES="build-essential patch ruby-dev zlib1g-dev liblzma-dev libpq-dev libsqlite3-dev"
-ARG RUBY_PACKAGES=""
-ENV RAILS_ENV=development
-WORKDIR $RAILS_ROOT
-# install packages
-RUN apt-get update \
-    && apt-get install -y $BUILD_PACKAGES $DEV_PACKAGES $RUBY_PACKAGES
+FROM ruby:2.7.0 as build-env
+
+RUN apt-get update &&\
+    apt-get install -y git vim sqlite3 &&\
+    rm -rf /var/lib/apt/lists/*
 
 RUN gem update --system 3.1.2 &&\
     gem install bundler -v '2.1.2'
 
-# install rubygem
+WORKDIR /usr/src/app/alpha-blog
+
+COPY . .
 
 ENV BUNDLER_VERSION 2.1.2
 
-COPY . .
- 
-# separating `update` from `install` mainly for build caching purposes
-RUN bundle update 
-RUN bundle install --path vendor/bundle \
-    && bin/rails db:setup \
-    && bin/rails db:migrate 
+RUN bundle update &&\
+    bundle install &&\
+    rails db:setup &&\
+    rails db:migrate
 
-#    Remove unneeded files (cached *.gem, *.o, *.c)
-RUN rm -rf vendor/bundle/cache/*.gem \
-    && find vendor/bundle -name "*.o" -delete \
-    && find vendor/bundle -name "*.c" -delete
-
-RUN bin/rails assets:precompile
-# Remove folders not needed in resulting image
-RUN rm -rf node_modules tmp/cache vendor/assets spec
-
-
-############### Build step done ###############
 FROM ruby:2.7.0-slim-buster
 ARG RAILS_ROOT=/usr/src/app/alpha-blog
 ARG GEMS_ROOT=$RAILS_ROOT/vendor/bundle
@@ -45,10 +28,9 @@ WORKDIR $RAILS_ROOT
 
 # install packages
 RUN apt-get update \
-    && apt-get install -y $PACKAGES
+    && apt-get install -y libsqlite3-0
 RUN gem update --system 3.1.2 &&\
     gem install bundler -v '2.1.2' 
-    
 
 ENV BUNDLER_VERSION 2.1.2
 
@@ -59,3 +41,6 @@ COPY --from=build-env $GEMS_ROOT $GEMS_ROOT
 
 EXPOSE 3000
 CMD ["bin/rails", "server", "-b", "0.0.0.0"]
+
+
+
